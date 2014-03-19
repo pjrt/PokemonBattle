@@ -6,8 +6,7 @@ import Network.Http.Client
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.ByteString.Internal (c2w)
-import Control.Applicative((<$>))
-import Control.Applicative((<*>))
+import Control.Applicative((<$>), (<*>))
 import Control.Monad(mzero)
 import qualified Data.Text as T
 import Data.Vector(toList)
@@ -57,12 +56,12 @@ getRandomPkmn :: IO Pokemon
 getRandomPkmn = do
             rInt <- randomRIO (1, 152) :: IO Int
             json <- apiRequest $ "/api/v1/pokemon/" ++ show rInt ++ "/"
-            return $ maybe (error "har") id $ decode json
+            return $ fromMaybe (error "har") $ decode json
 
 getMove :: String -> IO Move
 getMove uri = do
         json <- apiRequest uri
-        return $ maybe (error "hor") id $ decode json
+        return $ fromMaybe (error "hor") $ decode json
 
 apiRequest :: String -> IO BL.ByteString
 apiRequest uri =
@@ -88,8 +87,8 @@ instance Show DamageResult where
 
 calculateDamage :: Pokemon -> Move -> IO DamageResult
 calculateDamage  pkmn move =
-        let pkmAtkDmg = randomRIO (0,  floor $ fromIntegral ((atk pkmn + spAtk pkmn) * (power move)) / 300)
-            didItHit = (>= accuracy move) <$> randomRIO (0, 200) 
+        let pkmAtkDmg = randomRIO (0,  floor $ fromIntegral ((atk pkmn + spAtk pkmn) * power move) / 300)
+            didItHit = (>= accuracy move) <$> randomRIO (0, 200)
         in do
             hit <- didItHit
             if hit then Damage <$> pkmAtkDmg
@@ -106,8 +105,8 @@ main = do
     battle pkWithMoves 200 0
 
 battle :: Pokemon -> Integer -> Integer -> IO ()
-battle pk hp moveCount = do
-        if (hp <= 0)
+battle pk hp moveCount =
+        if hp <= 0
             then putStrLn $ name pk ++ " defeated you in " ++ show moveCount ++ " moves!"
             else do
                 move <- case moves pk of Moves has -> chooseIO has
