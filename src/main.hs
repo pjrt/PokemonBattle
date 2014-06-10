@@ -14,6 +14,8 @@ import Data.Vector(toList)
 import System.Random (newStdGen, randomRIO)
 import System.Random.Shuffle (shuffle')
 
+import Data.Maybe (fromMaybe)
+
 -- http://www.reddit.com/r/haskell/comments/1zy7ut/how_would_this_program_be_implemented_in_haskell/
 
 shuffleIO :: [a] -> IO [a]
@@ -56,12 +58,12 @@ getRandomPkmn :: IO Pokemon
 getRandomPkmn = do
             rInt <- randomRIO (1, 152) :: IO Int
             json <- apiRequest $ "/api/v1/pokemon/" ++ show rInt ++ "/"
-            return $ fromMaybe (error "har") $ decode json
+            return $ fromMaybe (error "Failed to parse JSON Pokemon") $ decode json
 
 getMove :: String -> IO Move
 getMove uri = do
         json <- apiRequest uri
-        return $ fromMaybe (error "hor") $ decode json
+        return $ fromMaybe (error "Failed to parse JSON Move") $ decode json
 
 apiRequest :: String -> IO BL.ByteString
 apiRequest uri =
@@ -80,7 +82,7 @@ downloadMoves pkmn @ (Pokemon { moves = PotentialMoves getFuncs }) = do
 downloadMoves pkm = return pkm
 
 
-data DamageResult = Damage Integer | Missed
+data DamageResult = Damage Int | Missed
 instance Show DamageResult where
         show (Damage amt) = "dealing " ++ show amt ++ " damage!"
         show (Missed) = "but it missed!"
@@ -104,7 +106,10 @@ main = do
     putStrLn $ "Wild " ++ name pkmn ++ " appeared!"
     battle pkWithMoves 200 0
 
-battle :: Pokemon -> Integer -> Integer -> IO ()
+type HP = Int
+type MoveCount = Int
+
+battle :: Pokemon -> HP -> MoveCount -> IO ()
 battle pk hp moveCount =
         if hp <= 0
             then putStrLn $ name pk ++ " defeated you in " ++ show moveCount ++ " moves!"

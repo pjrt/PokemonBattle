@@ -6,9 +6,9 @@ version:             0.1.0.0
 -- synopsis:
 -- description:
 -- license:
-license-file:        LICENSE
+-- license-file:        LICENSE
 author:              Pedro
-maintainer:          vondiefinsternis@gmail.com
+maintainer:          P.J.Rodriguez.T@gmail.com
 -- copyright:
 category:            Game
 build-type:          Simple
@@ -21,7 +21,7 @@ executable PokemonBattle
                        http-streams ==0.7.1.1,
                        bytestring ==0.10.0.2,
                        io-streams ==1.1.4.2,
-                       aeson ==0.7.0.2,
+                       aeson ==0.7.*,
                        random,
                        time,
                        random-shuffle ==0.0.4,
