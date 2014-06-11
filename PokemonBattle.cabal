@@ -15,9 +15,9 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 executable PokemonBattle
-  main-is:             src/main.hs
-  -- other-modules:
-  build-depends:       base ==4.6.*,
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  build-depends:       base ==4.7.*,
                        http-streams ==0.7.1.1,
                        bytestring ==0.10.0.2,
                        io-streams ==1.1.4.2,
@@ -26,4 +26,7 @@ executable PokemonBattle
                        time,
                        random-shuffle ==0.0.4,
                        vector,
-                       text
+                       text,
+                       old-locale,
+                       MonadRandom,
+                       mtl
