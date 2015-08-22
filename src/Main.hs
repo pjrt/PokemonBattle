@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleContexts #-}
 module Main where
 
 import Haskmon
@@ -25,9 +25,9 @@ getRandomPkmn = do
 -- Given a pokemon, get 4 random moves from it
 downloadMoves :: (RandomGen g, MonadIO m) => Pokemon -> PB g m [Move]
 downloadMoves pkm = do
-            metaMoves <- return $ pokemonMoves pkm
+            let metaMoves = pokemonMoves pkm
             randMoves <- shuffleM metaMoves -- Randomize the getters
-            liftIO $ (mapM getMove $ take 4 randMoves) -- Pick 4 from the random getters and download them
+            liftIO (mapM getMove $ take 4 randMoves) -- Pick 4 from the random getters and download them
 
 data DamageResult = Damage Int | Missed
 instance Show DamageResult where
@@ -36,7 +36,7 @@ instance Show DamageResult where
 
 calculateDamage :: (RandomGen g, Monad m, Functor m) => Pokemon -> Move -> RandT g m DamageResult
 calculateDamage  pkmn move = do
-            let top = (floor $ fromIntegral ((pokemonAttack pkmn + pokemonSpAtk pkmn) * movePower move) / 300)
+            let top = floor $ fromIntegral ((pokemonAttack pkmn + pokemonSpAtk pkmn) * movePower move) / 300
             pkmAtkDmg <- getRandomR (0, top)
             didItHit <- (>= moveAccuracy move) <$> getRandomR (0, 200)
             return $ if didItHit then Damage pkmAtkDmg else Missed
@@ -57,7 +57,7 @@ type MoveSet = [Move]
 
 playGame :: (RandomGen g, Monad m, Functor m) => Pokemon -> MoveSet -> PB g m ()
 playGame pk moves = do
-  tell $ ["A wild " ++ pokemonName pk ++ " has appeared!"]
+  tell ["A wild " ++ pokemonName pk ++ " has appeared!"]
   battle 100 0 pk moves
 
 battle :: (RandomGen g, Monad m, Functor m) => HP -> MoveCount -> Pokemon -> MoveSet -> PB g m ()
