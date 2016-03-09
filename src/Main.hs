@@ -1,15 +1,20 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleContexts, MultiWayIf #-}
 module Main where
+
+import BattleStatus
 
 import Haskmon
 import System.Random.Shuffle (shuffleM)
+import Control.Monad.State
 
 import Control.Monad.Random
 import Control.Monad.Writer
 
+import qualified Data.Text as T
+
 -- | App type. A composition of Random, Writer and some other monad (IO)
-newtype PB m a = PB { runPB :: RandT StdGen (WriterT [String] m) a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadRandom, MonadWriter [String])
+newtype PB m a = PB { runPB :: RandT StdGen (StateT BattleStatus m) a }
+  deriving (Functor, Applicative, Monad, MonadIO, MonadRandom, MonadState BattleStatus)
 
 -- Get a random pokemon from the original 152
 getRandomPkmn :: MonadIO m => PB m Pokemon
@@ -29,7 +34,7 @@ instance Show DamageResult where
         show (Damage amt) = "dealing " ++ show amt ++ " damage!"
         show Missed = "but it missed!"
 
--- | Given a pokemin and a move, calculate, randomly, how much damage that
+-- | Given a pokemon and a move, calculate, randomly, how much damage that
 -- move will do.
 calculateDamage :: Monad m => Pokemon -> Move -> PB m DamageResult
 calculateDamage pkmn move = do
@@ -46,8 +51,8 @@ calculateDamage pkmn move = do
 main :: IO ()
 main = do
   gen <- newStdGen
-  battleReport <- execWriterT (evalRandT play gen)
-  mapM_ putStrLn battleReport
+  (BS (_, _, battleReport)) <- execStateT (evalRandT play gen) $ initialBattleStatus 100
+  mapM_ (putStrLn . T.unpack) battleReport
     where play = runPB $ do pk <- getRandomPkmn
                             moves <- downloadMoves pk
                             playGame pk moves
@@ -58,30 +63,37 @@ type MoveSet = [Move]
 
 playGame :: Monad m => Pokemon -> MoveSet -> PB m ()
 playGame pk moves = do
-  tell ["A wild " ++ pokemonName pk ++ " has appeared!"]
-  battle 100 0 pk moves
+  addMsgS $ "A wild " <> showT (pokemonName pk) <> " has appeared!"
+  battle pk moves
 
 -- | A battle consists of an initial HP (your HP), a count, a pokemon and
 -- a moveset from said pokemon. The pokemon will continusly attack you with
 -- one of the moves from the moveset until you die, counting how many moves
 -- it took.
-battle :: Monad m => HP -> MoveCount -> Pokemon -> MoveSet -> PB m ()
-battle h c pkm moves = battle' h c
+battle :: Monad m => Pokemon -> MoveSet -> PB m ()
+battle pkm moves = battle'
   where
-    battle' hp count =
-      if hp <= 0
-      then tell ["You were defeated in " ++ show count ++ " moves!"]
-      else do
-        move <- choose moves
-        dmg <- calculateDamage pkm move
-        tell [printResult (pokemonName pkm) (moveName move) dmg]
-        battle' (calculateHp hp dmg) (count + 1)
-      where calculateHp hp' Missed = hp'
-            calculateHp hp' (Damage dmg) = hp' - dmg
-            printResult pkName mvName dmg =
-              pkName ++ " attacked you with " ++ mvName ++ " " ++ show dmg
+    battle' = do
+      (BS (hp, count, _)) <- get
+      if | hp <= 0 ->
+             addMsgS $ "You were defeated in " <> showT count <> " moves!"
+         | count > 50 ->
+             addMsgS "You survived over 50 turns. You win!"
+         | otherwise -> do
+            move <- choose moves
+            dmg <- calculateDamage pkm move
+            addMsgS $ printResult (pokemonName pkm) (moveName move) dmg
+            updateHP dmg
+            incTurnS
+            battle'
+      where printResult pkName mvName dmg =
+              T.pack pkName <> " attacked you with " <> T.pack mvName <> " " <> showT dmg
+            updateHP Missed = return () -- do nothing
+            updateHP (Damage dmg) = damageHPS dmg
 
 -- Utility for choosing a move from a MoveSet
 choose :: MonadRandom m => [a] -> m a
 choose xs = head <$> shuffleM xs
 
+showT :: Show a => a -> T.Text
+showT = T.pack . show

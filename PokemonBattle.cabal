@@ -23,9 +23,11 @@ executable PokemonBattle
                        random,
                        time,
                        random-shuffle,
+                       lens,
                        vector,
                        text,
                        MonadRandom,
                        mtl,
                        haskmon >= 0.2 && < 0.3
   ghc-options: -Wall
+  extensions:  OverloadedStrings
