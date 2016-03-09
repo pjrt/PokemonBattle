@@ -43,11 +43,7 @@ calculateDamage pkmn move = do
   pkmAtkDmg <- getRandomR (0, top)
   prevHitC <- view bsPrevHitCount <$> get
   let modAcc = prevHitC * 5
-  -- TODO: We are comparing it from 0 to 200 in order to make it
-  -- more likely to hit. Though what we should do is implement
-  -- a pseudo-random system instead of purely random. Purely random
-  -- is too boring.
-  didItHit <- (>= moveAccuracy move - modAcc) <$> getRandomR (0, 200)
+  didItHit <- (moveAccuracy move + modAcc >=) <$> getRandomR (0, 100)
   if didItHit then resetHitCount >> return (Damage pkmAtkDmg)
               else incHitCount   >> return Missed
   where
