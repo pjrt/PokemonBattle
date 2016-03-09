@@ -36,6 +36,21 @@ instance Show DamageResult where
 
 -- | Given a pokemon and a move, calculate, randomly, how much damage that
 -- move will do.
+--
+-- Sadly, pokeapi.co doesn't seem to have move categories for any of the
+-- moves, so we can't properly calculate the damage. We will just add the
+-- pokemon Attack and Special Attack stats to any move.
+--
+-- Additionally, accuracy is a plain check with a growing probability for
+-- each miss. This is different than the actual pokemon damage equation since
+-- you don't have any stats and pure randomness is boring.
+--
+-- Another difference is the damage scale. Here were are picking the damage
+-- to be between 0 and some top value. In reality, damage in pokemon games
+-- are based on the defense of the defendes (your stats that you don't have),
+-- the type of attack vs the type of the defender, the base and the level.
+-- We don't have that yet, so for now it is that simple, kind of arbitrary
+-- equation.
 calculateDamage :: Monad m => Pokemon -> Move -> PB m DamageResult
 calculateDamage pkmn move = do
   let pkAtk  = (+) <$> pokemonAttack <*> pokemonSpAtk $ pkmn
