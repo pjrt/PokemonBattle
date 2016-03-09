@@ -50,7 +50,7 @@ calculateDamage pkmn move = do
 main :: IO ()
 main = do
   gen <- newStdGen
-  (BS (_, _, battleReport)) <- execStateT (evalRandT play gen) $ initialBattleStatus 100
+  (BS _ _ battleReport) <- execStateT (evalRandT play gen) $ initialBattleStatus 100
   mapM_ (putStrLn . T.unpack) battleReport
     where play = runPB $ do pk <- getRandomPkmn
                             moves <- downloadMoves pk
@@ -71,7 +71,7 @@ battle pkm moves = do
   where
     addMsgS msg = modify' (addMsg msg)
     battle' = do
-      (BS (hp, count, _)) <- get
+      (BS hp count _) <- get
       if | hp <= 0 ->
              addMsgS $ "You were defeated in " <> showT count <> " moves!"
          | count > 50 ->
