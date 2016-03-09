@@ -2,15 +2,10 @@
 module Main where
 
 import Haskmon
-import System.Random (newStdGen, randomRIO)
-import System.Random.Shuffle (shuffle', shuffleM)
+import System.Random.Shuffle (shuffleM)
 
-import Data.Word
-
-import Control.Applicative
 import Control.Monad.Random
 import Control.Monad.Writer
-import qualified Data.Traversable as T
 
 -- | App type. A composition of Random, Writer and some other monad (IO)
 newtype PB g m a = PB { runPB :: RandT g (WriterT [String] m) a }
@@ -19,7 +14,7 @@ newtype PB g m a = PB { runPB :: RandT g (WriterT [String] m) a }
 -- Get a random pokemon from the original 152
 getRandomPkmn :: (RandomGen g, MonadIO m, Functor m) => PB g m Pokemon
 getRandomPkmn = do
-            randomInt <- getRandomR(1, 152)
+            randomInt <- getRandomR (1, 152)
             liftIO $ getPokemonById randomInt
 
 -- Given a pokemon, get 4 random moves from it
@@ -70,12 +65,12 @@ battle hp count pkm moves = PB (battle' hp count)
                       dmg <- calculateDamage pkm move
                       tell [printResult (pokemonName pkm) (moveName move) dmg]
                       battle' (calculateHp hp dmg) (count + 1)
-                          where calculateHp hp' (Missed) = hp'
+                          where calculateHp hp' Missed = hp'
                                 calculateHp hp' (Damage dmg) = hp' - dmg
                                 printResult pkName mvName dmg =
                                     pkName ++ " attacked you with " ++ mvName ++ " " ++ show dmg
 
 -- Utility for choosing a move from a MoveSet
-choose :: (RandomGen g, Monad m, Functor m) => [a] -> RandT g m a
+choose :: (RandomGen g, Monad m) => [a] -> RandT g m a
 choose xs = head <$> shuffleM xs
 

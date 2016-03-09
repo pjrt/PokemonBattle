@@ -28,3 +28,4 @@ executable PokemonBattle
                        MonadRandom,
                        mtl,
                        haskmon >= 0.2 && < 0.3
+  ghc-options: -Wall
