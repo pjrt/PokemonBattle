@@ -31,7 +31,7 @@ instance Show DamageResult where
 
 -- | Given a pokemin and a move, calculate, randomly, how much damage that
 -- move will do.
-calculateDamage :: (RandomGen g, Monad m) => Pokemon -> Move -> RandT g m DamageResult
+calculateDamage :: Monad m => Pokemon -> Move -> PB m DamageResult
 calculateDamage pkmn move = do
             let pkAtk  = (+) <$> pokemonAttack <*> pokemonSpAtk $ pkmn
                 top = floor (fromIntegral (pkAtk * movePower move) / 300 :: Double)
@@ -66,7 +66,7 @@ playGame pk moves = do
 -- one of the moves from the moveset until you die, counting how many moves
 -- it took.
 battle :: Monad m => HP -> MoveCount -> Pokemon -> MoveSet -> PB m ()
-battle h c pkm moves = PB $ battle' h c
+battle h c pkm moves = battle' h c
   where
     battle' hp count =
                     if hp <= 0 then tell ["You were defeated in " ++ show count ++ " moves!"]
@@ -81,6 +81,6 @@ battle h c pkm moves = PB $ battle' h c
                                     pkName ++ " attacked you with " ++ mvName ++ " " ++ show dmg
 
 -- Utility for choosing a move from a MoveSet
-choose :: (RandomGen g, Monad m) => [a] -> RandT g m a
+choose :: MonadRandom m => [a] -> m a
 choose xs = head <$> shuffleM xs
 
