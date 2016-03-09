@@ -46,11 +46,11 @@ calculateDamage pkmn move = do
 main :: IO ()
 main = do
   gen <- newStdGen
-  battleReport <- execWriterT (evalRandT (runPB go) gen)
+  battleReport <- execWriterT (evalRandT play gen)
   mapM_ putStrLn battleReport
-    where go = do pk <- getRandomPkmn
-                  moves <- downloadMoves pk
-                  playGame pk moves
+    where play = runPB $ do pk <- getRandomPkmn
+                            moves <- downloadMoves pk
+                            playGame pk moves
 
 type HP = Int
 type MoveCount = Int
@@ -69,16 +69,17 @@ battle :: Monad m => HP -> MoveCount -> Pokemon -> MoveSet -> PB m ()
 battle h c pkm moves = battle' h c
   where
     battle' hp count =
-                    if hp <= 0 then tell ["You were defeated in " ++ show count ++ " moves!"]
-                    else do
-                      move <- choose moves
-                      dmg <- calculateDamage pkm move
-                      tell [printResult (pokemonName pkm) (moveName move) dmg]
-                      battle' (calculateHp hp dmg) (count + 1)
-                          where calculateHp hp' Missed = hp'
-                                calculateHp hp' (Damage dmg) = hp' - dmg
-                                printResult pkName mvName dmg =
-                                    pkName ++ " attacked you with " ++ mvName ++ " " ++ show dmg
+      if hp <= 0
+      then tell ["You were defeated in " ++ show count ++ " moves!"]
+      else do
+        move <- choose moves
+        dmg <- calculateDamage pkm move
+        tell [printResult (pokemonName pkm) (moveName move) dmg]
+        battle' (calculateHp hp dmg) (count + 1)
+      where calculateHp hp' Missed = hp'
+            calculateHp hp' (Damage dmg) = hp' - dmg
+            printResult pkName mvName dmg =
+              pkName ++ " attacked you with " ++ mvName ++ " " ++ show dmg
 
 -- Utility for choosing a move from a MoveSet
 choose :: MonadRandom m => [a] -> m a
