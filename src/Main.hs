@@ -5,6 +5,7 @@ import BattleStatus
 
 import Haskmon
 import System.Random.Shuffle (shuffleM)
+import Control.Lens (ASetter, view, over)
 import Control.Monad.State
 import Control.Monad.Random
 
@@ -40,17 +41,23 @@ calculateDamage pkmn move = do
   let pkAtk  = (+) <$> pokemonAttack <*> pokemonSpAtk $ pkmn
       top = floor (fromIntegral (pkAtk * movePower move) / 300 :: Double)
   pkmAtkDmg <- getRandomR (0, top)
+  prevHitC <- view bsPrevHitCount <$> get
+  let modAcc = prevHitC * 5
   -- TODO: We are comparing it from 0 to 200 in order to make it
   -- more likely to hit. Though what we should do is implement
   -- a pseudo-random system instead of purely random. Purely random
   -- is too boring.
-  didItHit <- (>= moveAccuracy move) <$> getRandomR (0, 200)
-  return $ if didItHit then Damage pkmAtkDmg else Missed
+  didItHit <- (>= moveAccuracy move - modAcc) <$> getRandomR (0, 200)
+  if didItHit then resetHitCount >> return (Damage pkmAtkDmg)
+              else incHitCount   >> return Missed
+  where
+    resetHitCount = modBS bsPrevHitCount (const 0)
+    incHitCount   = modBS bsPrevHitCount (+ 1)
 
 main :: IO ()
 main = do
   gen <- newStdGen
-  (BS _ _ battleReport) <- execStateT (evalRandT play gen) $ initialBattleStatus 100
+  battleReport <- view bsMessages <$> execStateT (evalRandT play gen) (initialBattleStatus 100)
   mapM_ (putStrLn . T.unpack) battleReport
     where play = runPB $ do pk <- getRandomPkmn
                             moves <- downloadMoves pk
@@ -69,12 +76,12 @@ battle pkm moves = do
   addMsgS $ "A wild " <> showT (pokemonName pkm) <> " has appeared!"
   battle'
   where
-    addMsgS msg = modify' (addMsg msg)
+    addMsgS msg = modBS bsMessages (++ [msg])
     battle' = do
-      (BS hp count _) <- get
+      (BS hp turn _ _) <- get
       if | hp <= 0 ->
-             addMsgS $ "You were defeated in " <> showT count <> " moves!"
-         | count > 50 ->
+             addMsgS $ "You were defeated in " <> showT turn <> " moves!"
+         | turn > 50 ->
              addMsgS "You survived over 50 turns. You win!"
          | otherwise -> do
             move <- choose moves
@@ -88,8 +95,8 @@ battle pkm moves = do
             updateHP Missed = return () -- do nothing
             updateHP (Damage dmg) = damageHPS dmg
 
-            damageHPS dmg = modify' (damageHP dmg)
-            incTurnS = modify' incTurn
+            damageHPS dmg = modBS bsHP (\h -> h - dmg)
+            incTurnS = modBS bsTurn (+ 1)
 
 -- Utility for choosing a move from a MoveSet
 choose :: MonadRandom m => [a] -> m a
@@ -97,3 +104,8 @@ choose xs = head <$> shuffleM xs
 
 showT :: Show a => a -> T.Text
 showT = T.pack . show
+
+-- | Helper function for modifying the battle status inside a PB using
+-- lenses
+modBS :: Monad m => ASetter BattleStatus BattleStatus a b -> (a -> b) -> PB m ()
+modBS l f = modify' (over l f)
