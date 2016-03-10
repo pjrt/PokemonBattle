@@ -16,10 +16,10 @@ import qualified Data.Text as T
 newtype PB m a = PB { runPB :: RandT StdGen (StateT BattleStatus m) a }
   deriving (Functor, Applicative, Monad, MonadIO, MonadRandom, MonadState BattleStatus)
 
--- Get a random pokemon from the original 152
+-- Get a random pokemon from the original 151
 getRandomPkmn :: MonadIO m => PB m Pokemon
 getRandomPkmn = do
-  randomInt <- getRandomR (1, 152)
+  randomInt <- getRandomR (1, 151)
   liftIO $ getPokemonById randomInt
 
 -- Given a pokemon, get 4 random moves from it
